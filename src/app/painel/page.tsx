@@ -93,6 +93,8 @@ export default function AdminPanelPage() {
   const [servicesList, setServicesList] = useState<ServiceCategory[]>([]);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [serviceFormItems, setServiceFormItems] = useState('');
+  const [serviceFormTitle, setServiceFormTitle] = useState('');
+  const [serviceFormSubtitle, setServiceFormSubtitle] = useState('');
 
   // Toast / Feedback
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -486,7 +488,10 @@ export default function AdminPanelPage() {
   // Services Actions
   const handleEditServiceClick = (cat: ServiceCategory) => {
     setEditingServiceId(cat.id);
+    setServiceFormTitle(cat.title);
+    setServiceFormSubtitle(cat.subtitle);
     setServiceFormItems(cat.items.join('\n'));
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Added smooth scroll on click edit
   };
 
   const handleServiceSubmit = (e: React.FormEvent) => {
@@ -495,14 +500,16 @@ export default function AdminPanelPage() {
 
     const splitItems = serviceFormItems.split('\n').map(i => i.trim()).filter(Boolean);
     const updated = servicesList.map(cat => 
-      cat.id === editingServiceId ? { ...cat, items: splitItems } : cat
+      cat.id === editingServiceId ? { ...cat, title: serviceFormTitle, subtitle: serviceFormSubtitle, items: splitItems } : cat
     );
 
     updateServices(updated);
     setServicesList(updated);
     setEditingServiceId(null);
+    setServiceFormTitle('');
+    setServiceFormSubtitle('');
     setServiceFormItems('');
-    showToast('Lista de serviços atualizada!');
+    showToast('Serviços atualizados com sucesso!');
   };
 
   return (
@@ -1636,14 +1643,38 @@ export default function AdminPanelPage() {
                   {editingServiceId ? (
                     <form onSubmit={handleServiceSubmit} className="p-6 bg-zinc-900 border border-zinc-800 rounded-2xl space-y-4">
                       <h3 className="text-sm font-semibold text-white uppercase font-space">
-                        Editar Itens: {servicesList.find(s => s.id === editingServiceId)?.title}
+                        Editar Categoria de Serviço: {servicesList.find(s => s.id === editingServiceId)?.title}
                       </h3>
                       
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Título do Card</label>
+                          <input
+                            type="text"
+                            required
+                            value={serviceFormTitle}
+                            onChange={(e) => setServiceFormTitle(e.target.value)}
+                            className="px-4 py-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white focus:border-neon-purple focus:outline-none transition-all text-xs font-light"
+                          />
+                        </div>
+
+                        <div className="flex flex-col space-y-2">
+                          <label className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Subtítulo / Descritivo Curto</label>
+                          <input
+                            type="text"
+                            required
+                            value={serviceFormSubtitle}
+                            onChange={(e) => setServiceFormSubtitle(e.target.value)}
+                            className="px-4 py-3 bg-zinc-950 border border-zinc-900 rounded-xl text-white focus:border-neon-purple focus:outline-none transition-all text-xs font-light"
+                          />
+                        </div>
+                      </div>
+
                       <div className="flex flex-col space-y-2">
-                        <label className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Itens (um por linha)</label>
+                        <label className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">Itens do Serviço (um por linha)</label>
                         <textarea
                           required
-                          rows={10}
+                          rows={8}
                           value={serviceFormItems}
                           onChange={(e) => setServiceFormItems(e.target.value)}
                           placeholder="Digite um serviço por linha..."
