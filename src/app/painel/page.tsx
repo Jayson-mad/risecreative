@@ -256,33 +256,69 @@ export default function AdminPanelPage() {
     });
   };
 
-  // Image Upload handler with automatic compression
+  // Image Upload handler with automatic compression and cloud sync
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'frontImage' | 'backImage' | 'image' | 'ceoImage' | 'producedFront' | 'producedBack' | 'heroBgImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
-      showToast('Processando e compactando imagem...');
+      showToast('Compactando imagem...');
       const base64String = await compressImage(file, 800, 800, 0.7);
 
-      if (field === 'frontImage' || field === 'backImage') {
-        setProductForm(prev => ({ ...prev, [field]: base64String }));
-      } else if (field === 'image') {
-        setPortfolioForm(prev => ({ ...prev, image: base64String }));
-      } else if (field === 'ceoImage') {
-        setAboutForm(prev => ({ ...prev, ceoImage: base64String }));
-      } else if (field === 'producedFront') {
-        setProducedForm(prev => ({ ...prev, frontImage: base64String }));
-      } else if (field === 'producedBack') {
-        setProducedForm(prev => ({ ...prev, backImage: base64String }));
-      } else if (field === 'heroBgImage') {
-        setHeroForm(prev => ({ ...prev, bgImage: base64String }));
+      showToast('Enviando para nuvem Vercel...');
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64: base64String, filename: file.name })
+      });
+      
+      const uploadData = await uploadRes.json();
+      if (uploadData.error) {
+        throw new Error(uploadData.error);
       }
-      showToast('Imagem carregada com sucesso!');
-    } catch (error) {
-      console.error('Failed to compress image', error);
-      showToast('Erro ao processar imagem.', 'error');
+      
+      const imageUrl = uploadData.url;
+
+      if (field === 'frontImage' || field === 'backImage') {
+        setProductForm(prev => ({ ...prev, [field]: imageUrl }));
+      } else if (field === 'image') {
+        setPortfolioForm(prev => ({ ...prev, image: imageUrl }));
+      } else if (field === 'ceoImage') {
+        setAboutForm(prev => ({ ...prev, ceoImage: imageUrl }));
+      } else if (field === 'producedFront') {
+        setProducedForm(prev => ({ ...prev, frontImage: imageUrl }));
+      } else if (field === 'producedBack') {
+        setProducedForm(prev => ({ ...prev, backImage: imageUrl }));
+      } else if (field === 'heroBgImage') {
+        setHeroForm(prev => ({ ...prev, bgImage: imageUrl }));
+      }
+      showToast('Imagem sincronizada na nuvem!');
+    } catch (error: any) {
+      console.error('Failed to compress/upload image', error);
+      showToast(error.message || 'Erro ao processar imagem.', 'error');
     }
+  };
+
+  // Export Data for Site Syncing
+  const handleExportData = () => {
+    const backupData = {
+      products,
+      portfolio,
+      producedItems,
+      services,
+      about,
+      hero
+    };
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(backupData, null, 2)
+    )}`;
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', jsonString);
+    downloadAnchor.setAttribute('download', 'backup_rise.json');
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast('Backup exportado com sucesso!');
   };
 
   // Product Actions
@@ -756,6 +792,29 @@ export default function AdminPanelPage() {
                         {products.reduce((acc, p) => acc + p.stock, 0)} pcs
                       </span>
                     </div>
+                  </div>
+
+                  {/* Export Config / Sync Section */}
+                  <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-4">
+                    <h3 className="text-sm font-semibold text-white tracking-tight flex items-center">
+                      <Upload size={16} className="mr-2 text-neon-purple" />
+                      Sincronizar Celular e Outros Aparelhos (Exportar Configurações)
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-light leading-relaxed">
+                      Como o painel salva as alterações apenas no navegador deste computador (LocalStorage), outros aparelhos (como seu celular ou clientes acessando online) ainda carregarão os dados padrões do código. 
+                      Para que todas as suas edições de slogans, imagens, produtos e serviços fiquem salvas por padrão e apareçam para todos os aparelhos:
+                    </p>
+                    <ol className="list-decimal pl-5 text-xs text-zinc-500 font-light space-y-1">
+                      <li>Clique no botão abaixo para baixar o arquivo <strong className="text-zinc-300">backup_rise.json</strong>.</li>
+                      <li>Envie este arquivo de backup para o assistente no chat de desenvolvimento.</li>
+                      <li>Nós colocaremos os dados do seu backup diretamente no código padrão do site e faremos o deploy definitivo!</li>
+                    </ol>
+                    <button
+                      onClick={handleExportData}
+                      className="px-4 py-2 bg-neon-purple/20 hover:bg-neon-purple/40 border border-neon-purple/30 text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Exportar Configurações
+                    </button>
                   </div>
 
                   {/* Troubleshooting Reset Button */}

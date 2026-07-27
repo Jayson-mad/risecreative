@@ -305,120 +305,203 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [hero, setHero] = useState<HeroData>(INITIAL_HERO);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from database on mount (falls back to local initialization if missing)
   useEffect(() => {
-    try {
-      const storedProducts = localStorage.getItem('rise_products');
-      const storedPortfolio = localStorage.getItem('rise_portfolio');
-      const storedProduced = localStorage.getItem('rise_produced_items');
-      const storedServices = localStorage.getItem('rise_services');
-      const storedAbout = localStorage.getItem('rise_about');
-      const storedHero = localStorage.getItem('rise_hero');
-
-      if (storedProducts) setProducts(JSON.parse(storedProducts));
-      if (storedPortfolio) setPortfolio(JSON.parse(storedPortfolio));
-      if (storedProduced) setProducedItems(JSON.parse(storedProduced));
-      if (storedServices) setServices(JSON.parse(storedServices));
-      if (storedAbout) setAbout(JSON.parse(storedAbout));
-      if (storedHero) setHero(JSON.parse(storedHero));
-    } catch (e) {
-      console.error('Failed to load state from localStorage', e);
-    }
-    setIsLoaded(true);
+    const initAndLoad = async () => {
+      try {
+        // Trigger DB init if needed (failsafe setup)
+        await fetch('/api/db/init');
+        
+        // Fetch all states from cloud database
+        const res = await fetch('/api/db');
+        const data = await res.json();
+        
+        if (data.products) setProducts(data.products);
+        if (data.portfolio) setPortfolio(data.portfolio);
+        if (data.producedItems) setProducedItems(data.producedItems);
+        if (data.services) setServices(data.services);
+        if (data.about) setAbout(data.about);
+        if (data.hero) setHero(data.hero);
+      } catch (e) {
+        console.error('Failed to load state from cloud database, falling back to local initial mock data.', e);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    initAndLoad();
   }, []);
 
-  // Save to localStorage on changes
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('rise_products', JSON.stringify(products));
-  }, [products, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('rise_portfolio', JSON.stringify(portfolio));
-  }, [portfolio, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('rise_produced_items', JSON.stringify(producedItems));
-  }, [producedItems, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('rise_services', JSON.stringify(services));
-  }, [services, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('rise_about', JSON.stringify(about));
-  }, [about, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('rise_hero', JSON.stringify(hero));
-  }, [hero, isLoaded]);
-
   // Product Operations
-  const addProduct = (p: Omit<Product, 'id'>) => {
+  const addProduct = async (p: Omit<Product, 'id'>) => {
     const id = p.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
-    setProducts((prev) => [...prev, { ...p, id }]);
+    const newProduct = { ...p, id };
+    setProducts((prev) => [...prev, newProduct]);
+    try {
+      await fetch('/api/db?type=product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+      });
+    } catch (e) {
+      console.error('Failed to add product to database', e);
+    }
   };
 
-  const updateProduct = (id: string, updatedFields: Partial<Product>) => {
+  const updateProduct = async (id: string, updatedFields: Partial<Product>) => {
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updatedFields } : p))
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, ...updatedFields };
+          fetch('/api/db?type=product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          }).catch((e) => console.error('Failed to update product in database', e));
+          return updated;
+        }
+        return item;
+      })
     );
   };
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await fetch(`/api/db?type=product&id=${id}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.error('Failed to delete product from database', e);
+    }
   };
 
   // Portfolio Operations
-  const addPortfolio = (item: Omit<PortfolioItem, 'id'>) => {
-    const id = Date.now();
-    setPortfolio((prev) => [...prev, { ...item, id }]);
+  const addPortfolio = async (item: Omit<PortfolioItem, 'id'>) => {
+    try {
+      await fetch('/api/db?type=portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      });
+      // Fetch latest portfolio items to get correct serial IDs
+      const res = await fetch('/api/db');
+      const data = await res.json();
+      if (data.portfolio) setPortfolio(data.portfolio);
+    } catch (e) {
+      console.error('Failed to add portfolio to database', e);
+    }
   };
 
-  const updatePortfolio = (id: number, updatedFields: Partial<PortfolioItem>) => {
+  const updatePortfolio = async (id: number, updatedFields: Partial<PortfolioItem>) => {
     setPortfolio((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updatedFields } : item))
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, ...updatedFields };
+          fetch('/api/db?type=portfolio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          }).catch((e) => console.error('Failed to update portfolio in database', e));
+          return updated;
+        }
+        return item;
+      })
     );
   };
 
-  const deletePortfolio = (id: number) => {
+  const deletePortfolio = async (id: number) => {
     setPortfolio((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await fetch(`/api/db?type=portfolio&id=${id}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.error('Failed to delete portfolio from database', e);
+    }
   };
 
   // Produced Items Operations
-  const addProducedItem = (item: Omit<ProducedItem, 'id'>) => {
+  const addProducedItem = async (item: Omit<ProducedItem, 'id'>) => {
     const id = Date.now();
-    setProducedItems((prev) => [...prev, { ...item, id }]);
+    const newItem = { ...item, id };
+    setProducedItems((prev) => [...prev, newItem]);
+    try {
+      await fetch('/api/db?type=produced', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem)
+      });
+    } catch (e) {
+      console.error('Failed to add produced item to database', e);
+    }
   };
 
-  const updateProducedItem = (id: number, updatedFields: Partial<ProducedItem>) => {
+  const updateProducedItem = async (id: number, updatedFields: Partial<ProducedItem>) => {
     setProducedItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updatedFields } : item))
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, ...updatedFields };
+          fetch('/api/db?type=produced', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          }).catch((e) => console.error('Failed to update produced item in database', e));
+          return updated;
+        }
+        return item;
+      })
     );
   };
 
-  const deleteProducedItem = (id: number) => {
+  const deleteProducedItem = async (id: number) => {
     setProducedItems((prev) => prev.filter((item) => item.id !== id));
+    try {
+      await fetch(`/api/db?type=produced&id=${id}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.error('Failed to delete produced item from database', e);
+    }
   };
 
   // About/Stats Operations
-  const updateAbout = (data: Partial<AboutData>) => {
-    setAbout((prev) => ({ ...prev, ...data }));
+  const updateAbout = async (data: Partial<AboutData>) => {
+    setAbout((prev) => {
+      const updated = { ...prev, ...data };
+      fetch('/api/db?type=about', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      }).catch((e) => console.error('Failed to update about data in database', e));
+      return updated;
+    });
   };
 
   // Services Operations
-  const updateServices = (newServices: ServiceCategory[]) => {
+  const updateServices = async (newServices: ServiceCategory[]) => {
     setServices(newServices);
+    try {
+      await fetch('/api/db?type=services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newServices)
+      });
+    } catch (e) {
+      console.error('Failed to update services in database', e);
+    }
   };
 
   // Hero Operations
-  const updateHero = (data: Partial<HeroData>) => {
-    setHero((prev) => ({ ...prev, ...data }));
+  const updateHero = async (data: Partial<HeroData>) => {
+    setHero((prev) => {
+      const updated = { ...prev, ...data };
+      fetch('/api/db?type=hero', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      }).catch((e) => console.error('Failed to update hero data in database', e));
+      return updated;
+    });
   };
 
   return (
