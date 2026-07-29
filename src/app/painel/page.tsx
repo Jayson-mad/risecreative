@@ -99,13 +99,15 @@ export default function AdminPanelPage() {
   // Toast / Feedback
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  const [showSyncBanner, setShowSyncBanner] = useState(false);
+
   // Admin user gender profile
   const [adminUser, setAdminUser] = useState<{ name: string; gender: 'm' | 'f' }>({
     name: 'Jayson Wilgner',
     gender: 'm'
   });
 
-  // Check login session storage on mount
+  // Check login session storage on mount and check for legacy local data
   useEffect(() => {
     const session = sessionStorage.getItem('rise_admin_session');
     const storedUser = sessionStorage.getItem('rise_admin_user');
@@ -114,6 +116,15 @@ export default function AdminPanelPage() {
       if (storedUser) {
         setAdminUser(JSON.parse(storedUser));
       }
+    }
+
+    // Check if there is local data that has not been synced to cloud database yet
+    const hasLocalProducts = localStorage.getItem('rise_products');
+    const hasLocalHero = localStorage.getItem('rise_hero');
+    const alreadySynced = localStorage.getItem('rise_synced_to_cloud');
+
+    if ((hasLocalProducts || hasLocalHero) && !alreadySynced) {
+      setShowSyncBanner(true);
     }
   }, []);
 
@@ -319,6 +330,96 @@ export default function AdminPanelPage() {
     downloadAnchor.click();
     downloadAnchor.remove();
     showToast('Backup exportado com sucesso!');
+  };
+
+  // Sync Legacy Local Storage to Cloud Postgres Database
+  const handleSyncLocalToCloud = async () => {
+    try {
+      showToast('Sincronizando dados locais com a nuvem...');
+      
+      const localProducts = localStorage.getItem('rise_products');
+      const localPortfolio = localStorage.getItem('rise_portfolio');
+      const localProduced = localStorage.getItem('rise_produced_items');
+      const localServices = localStorage.getItem('rise_services');
+      const localAbout = localStorage.getItem('rise_about');
+      const localHero = localStorage.getItem('rise_hero');
+
+      // Sync Products
+      if (localProducts) {
+        const parsed = JSON.parse(localProducts);
+        for (const p of parsed) {
+          await fetch('/api/db?type=product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+          });
+        }
+      }
+
+      // Sync Portfolio
+      if (localPortfolio) {
+        const parsed = JSON.parse(localPortfolio);
+        for (const item of parsed) {
+          await fetch('/api/db?type=portfolio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+          });
+        }
+      }
+
+      // Sync Produced Items
+      if (localProduced) {
+        const parsed = JSON.parse(localProduced);
+        for (const item of parsed) {
+          await fetch('/api/db?type=produced', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+          });
+        }
+      }
+
+      // Sync Services
+      if (localServices) {
+        const parsed = JSON.parse(localServices);
+        await fetch('/api/db?type=services', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        });
+      }
+
+      // Sync About
+      if (localAbout) {
+        const parsed = JSON.parse(localAbout);
+        await fetch('/api/db?type=about', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        });
+      }
+
+      // Sync Hero
+      if (localHero) {
+        const parsed = JSON.parse(localHero);
+        await fetch('/api/db?type=hero', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        });
+      }
+
+      localStorage.setItem('rise_synced_to_cloud', 'true');
+      setShowSyncBanner(false);
+      showToast('Sincronização concluída com sucesso! Recarregando...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to sync to cloud', error);
+      showToast('Erro ao sincronizar com o banco de dados.', 'error');
+    }
   };
 
   // Product Actions
@@ -665,6 +766,37 @@ export default function AdminPanelPage() {
               </button>
             </div>
           </header>
+
+          {showSyncBanner && (
+            <div className="bg-neon-purple/10 border-b border-neon-purple/20 py-4 px-6 md:px-12 text-white">
+              <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <AlertTriangle className="text-neon-purple shrink-0" size={20} />
+                  <div className="text-xs font-light">
+                    <strong className="font-semibold text-white block">Sincronização com o Banco de Dados Pendente</strong>
+                    Detectamos dados salvos localmente neste computador (produtos, bio, slogans, etc.) que ainda não estão no banco de dados da nuvem. Sincronize agora para que fiquem visíveis para todo o público!
+                  </div>
+                </div>
+                <div className="flex space-x-3 shrink-0">
+                  <button
+                    onClick={handleSyncLocalToCloud}
+                    className="px-4 py-2 bg-neon-purple hover:bg-neon-purple/80 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Sincronizar com a Nuvem
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('rise_synced_to_cloud', 'true');
+                      setShowSyncBanner(false);
+                    }}
+                    className="px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    Dispensar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex-grow max-w-7xl w-full mx-auto px-6 md:px-12 py-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
             
