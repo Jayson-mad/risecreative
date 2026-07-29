@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingCart, ArrowRight } from 'lucide-react';
+import { ShoppingCart, ArrowRight, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 
@@ -119,6 +119,21 @@ function ProductCard({ product }: { product: typeof PRODUCTS[0] }) {
               <ArrowRight size={14} />
             </span>
           </div>
+
+          {/* Mobile Flip Button (Taps to flip the card on mobile/touch screens) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsFlipped(!isFlipped);
+            }}
+            className="absolute top-3 right-3 z-35 p-2.5 bg-black/75 hover:bg-black border border-zinc-800 hover:border-neon-pink text-zinc-300 hover:text-white rounded-full transition-all md:hidden cursor-pointer flex items-center justify-center"
+            title="Girar Card"
+          >
+            <RefreshCw size={10} className="text-zinc-300 animate-pulse" />
+          </button>
+
         </div>
       </Link>
 

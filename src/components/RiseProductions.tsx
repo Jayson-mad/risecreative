@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp, ProducedItem } from '@/context/AppContext';
-import { X, ExternalLink, Sparkles, Tag } from 'lucide-react';
+import { X, ExternalLink, Sparkles, Tag, RefreshCw } from 'lucide-react';
 
 function ProductionCard({ item, onClick }: { item: ProducedItem; onClick: () => void }) {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -63,6 +63,19 @@ function ProductionCard({ item, onClick }: { item: ProducedItem; onClick: () => 
               Ver Detalhes
             </span>
           </div>
+
+          {/* Mobile Flip Button (Taps to flip the card on mobile/touch screens) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsFlipped(!isFlipped);
+            }}
+            className="absolute top-3 right-3 z-35 p-2.5 bg-black/75 hover:bg-black border border-zinc-800 hover:border-neon-purple text-zinc-300 hover:text-white rounded-full transition-all md:hidden cursor-pointer flex items-center justify-center"
+            title="Girar Card"
+          >
+            <RefreshCw size={10} className="text-zinc-300 animate-pulse" />
+          </button>
 
         </div>
       </div>
