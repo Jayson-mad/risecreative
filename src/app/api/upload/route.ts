@@ -2,10 +2,10 @@ import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
     // Return mock URL or error depending on mode.
     // If not connected in local dev, let's log a warning but return a mock url so compilation/tests don't break.
-    console.warn('BLOB_READ_WRITE_TOKEN is missing. Returning fallback mock URL.');
+    console.warn('Vercel Blob credentials (BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID) are missing. Returning fallback mock URL.');
     return NextResponse.json({ url: '/oversized_front.jpg' });
   }
 
