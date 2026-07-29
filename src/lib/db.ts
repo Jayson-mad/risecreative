@@ -3,8 +3,9 @@ import { Pool } from 'pg';
 let pool: Pool;
 
 if (process.env.POSTGRES_URL) {
+  const cleanConnectionString = process.env.POSTGRES_URL.split('?')[0];
   pool = new Pool({
-    connectionString: process.env.POSTGRES_URL,
+    connectionString: cleanConnectionString,
     ssl: {
       rejectUnauthorized: false
     }
