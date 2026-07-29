@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { sql } from '@vercel/postgres';
+import pool from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 // Fallback Mock Data for Local Development (when POSTGRES_URL is missing)
@@ -86,12 +86,12 @@ export async function GET(request: Request) {
 
   try {
     if (type === 'all' || !type) {
-      const productsData = await sql`SELECT * FROM products;`;
-      const portfolioData = await sql`SELECT * FROM portfolio ORDER BY id DESC;`;
-      const producedData = await sql`SELECT * FROM produced_items ORDER BY id DESC;`;
-      const servicesData = await sql`SELECT * FROM services;`;
-      const aboutData = await sql`SELECT * FROM about WHERE id = 1;`;
-      const heroData = await sql`SELECT * FROM hero WHERE id = 1;`;
+      const productsData = await pool.query('SELECT * FROM products;');
+      const portfolioData = await pool.query('SELECT * FROM portfolio ORDER BY id DESC;');
+      const producedData = await pool.query('SELECT * FROM produced_items ORDER BY id DESC;');
+      const servicesData = await pool.query('SELECT * FROM services;');
+      const aboutData = await pool.query('SELECT * FROM about WHERE id = 1;');
+      const heroData = await pool.query('SELECT * FROM hero WHERE id = 1;');
 
       // Helper to parse arrays from JSON/Text database format
       const parseJson = (val: any) => {
@@ -200,9 +200,9 @@ export async function POST(request: Request) {
 
     if (type === 'product') {
       const { id, name, price, category, frontImage, backImage, description, colors, sizes, stock } = body;
-      await sql`
+      await pool.query(`
         INSERT INTO products (id, name, price, category, front_image, back_image, description, colors, sizes, stock)
-        VALUES (${id}, ${name}, ${price}, ${category}, ${frontImage}, ${backImage}, ${description}, ${JSON.stringify(colors)}, ${JSON.stringify(sizes)}, ${stock})
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           price = EXCLUDED.price,
@@ -213,7 +213,7 @@ export async function POST(request: Request) {
           colors = EXCLUDED.colors,
           sizes = EXCLUDED.sizes,
           stock = EXCLUDED.stock;
-      `;
+      `, [id, name, price, category, frontImage, backImage, description, JSON.stringify(colors), JSON.stringify(sizes), stock]);
       return NextResponse.json({ success: true });
     }
 
@@ -221,30 +221,30 @@ export async function POST(request: Request) {
       const { id, title, category, image, description, year } = body;
       if (id) {
         // Update
-        await sql`
+        await pool.query(`
           UPDATE portfolio SET
-            title = ${title},
-            category = ${category},
-            image = ${image},
-            description = ${description},
-            year = ${year}
-          WHERE id = ${id};
-        `;
+            title = $1,
+            category = $2,
+            image = $3,
+            description = $4,
+            year = $5
+          WHERE id = $6;
+        `, [title, category, image, description, year, id]);
       } else {
         // Insert
-        await sql`
+        await pool.query(`
           INSERT INTO portfolio (title, category, image, description, year)
-          VALUES (${title}, ${category}, ${image}, ${description}, ${year});
-        `;
+          VALUES ($1, $2, $3, $4, $5);
+        `, [title, category, image, description, year]);
       }
       return NextResponse.json({ success: true });
     }
 
     if (type === 'produced') {
       const { id, name, client, category, frontImage, backImage, description } = body;
-      await sql`
+      await pool.query(`
         INSERT INTO produced_items (id, name, client, category, front_image, back_image, description)
-        VALUES (${id}, ${name}, ${client}, ${category}, ${frontImage}, ${backImage}, ${description})
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           client = EXCLUDED.client,
@@ -252,28 +252,28 @@ export async function POST(request: Request) {
           front_image = EXCLUDED.front_image,
           back_image = EXCLUDED.back_image,
           description = EXCLUDED.description;
-      `;
+      `, [id, name, client, category, frontImage, backImage, description]);
       return NextResponse.json({ success: true });
     }
 
     if (type === 'services') {
       const servicesList = body; // Array of ServiceCategory
       // Clean and batch upsert
-      await sql`DELETE FROM services;`;
+      await pool.query('DELETE FROM services;');
       for (const s of servicesList) {
-        await sql`
+        await pool.query(`
           INSERT INTO services (id, title, subtitle, glow, items)
-          VALUES (${s.id}, ${s.title}, ${s.subtitle}, ${s.glow}, ${JSON.stringify(s.items)});
-        `;
+          VALUES ($1, $2, $3, $4, $5);
+        `, [s.id, s.title, s.subtitle, s.glow, JSON.stringify(s.items)]);
       }
       return NextResponse.json({ success: true });
     }
 
     if (type === 'about') {
       const { story, mission, ceoName, ceoAge, ceoLoc, ceoTag, ceoImage, stats } = body;
-      await sql`
+      await pool.query(`
         INSERT INTO about (id, story, mission, ceo_name, ceo_age, ceo_loc, ceo_tag, ceo_image, stats)
-        VALUES (1, ${story}, ${mission}, ${ceoName}, ${ceoAge}, ${ceoLoc}, ${ceoTag}, ${ceoImage}, ${JSON.stringify(stats)})
+        VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (id) DO UPDATE SET
           story = EXCLUDED.story,
           mission = EXCLUDED.mission,
@@ -283,22 +283,22 @@ export async function POST(request: Request) {
           ceo_tag = EXCLUDED.ceo_tag,
           ceo_image = EXCLUDED.ceo_image,
           stats = EXCLUDED.stats;
-      `;
+      `, [story, mission, ceoName, ceoAge, ceoLoc, ceoTag, ceoImage, JSON.stringify(stats)]);
       return NextResponse.json({ success: true });
     }
 
     if (type === 'hero') {
       const { tagline, tags, slogan, subSlogan, bgImage } = body;
-      await sql`
+      await pool.query(`
         INSERT INTO hero (id, tagline, tags, slogan, sub_slogan, bg_image)
-        VALUES (1, ${tagline}, ${JSON.stringify(tags)}, ${slogan}, ${subSlogan}, ${bgImage})
+        VALUES (1, $1, $2, $3, $4, $5)
         ON CONFLICT (id) DO UPDATE SET
           tagline = EXCLUDED.tagline,
           tags = EXCLUDED.tags,
           slogan = EXCLUDED.slogan,
           sub_slogan = EXCLUDED.sub_slogan,
           bg_image = EXCLUDED.bg_image;
-      `;
+      `, [tagline, JSON.stringify(tags), slogan, subSlogan, bgImage]);
       return NextResponse.json({ success: true });
     }
 
@@ -325,17 +325,17 @@ export async function DELETE(request: Request) {
     }
 
     if (type === 'product') {
-      await sql`DELETE FROM products WHERE id = ${id};`;
+      await pool.query('DELETE FROM products WHERE id = $1;', [id]);
       return NextResponse.json({ success: true });
     }
 
     if (type === 'portfolio') {
-      await sql`DELETE FROM portfolio WHERE id = ${parseInt(id)};`;
+      await pool.query('DELETE FROM portfolio WHERE id = $1;', [parseInt(id)]);
       return NextResponse.json({ success: true });
     }
 
     if (type === 'produced') {
-      await sql`DELETE FROM produced_items WHERE id = ${id};`;
+      await pool.query('DELETE FROM produced_items WHERE id = $1;', [id]);
       return NextResponse.json({ success: true });
     }
 

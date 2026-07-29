@@ -1,4 +1,4 @@
-import { sql } from '@vercel/postgres';
+import pool from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
 
   try {
     // 1. Products Table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS products (
         id VARCHAR(255) PRIMARY KEY,
         name TEXT NOT NULL,
@@ -24,10 +24,10 @@ export async function GET() {
         sizes JSONB NOT NULL,
         stock INTEGER NOT NULL DEFAULT 0
       );
-    `;
+    `);
 
     // 2. Portfolio Table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS portfolio (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
@@ -36,10 +36,10 @@ export async function GET() {
         description TEXT,
         year TEXT
       );
-    `;
+    `);
 
     // 3. Produced Items Table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS produced_items (
         id BIGINT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -49,10 +49,10 @@ export async function GET() {
         back_image TEXT,
         description TEXT
       );
-    `;
+    `);
 
     // 4. Services Table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
         title TEXT NOT NULL,
@@ -60,10 +60,10 @@ export async function GET() {
         glow TEXT NOT NULL,
         items JSONB NOT NULL
       );
-    `;
+    `);
 
     // 5. About Table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS about (
         id INTEGER PRIMARY KEY DEFAULT 1,
         story TEXT NOT NULL,
@@ -76,10 +76,10 @@ export async function GET() {
         stats JSONB NOT NULL,
         CONSTRAINT one_row_about CHECK (id = 1)
       );
-    `;
+    `);
 
     // 6. Hero Table
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS hero (
         id INTEGER PRIMARY KEY DEFAULT 1,
         tagline TEXT NOT NULL,
@@ -89,13 +89,13 @@ export async function GET() {
         bg_image TEXT,
         CONSTRAINT one_row_hero CHECK (id = 1)
       );
-    `;
+    `);
 
     // Seeding Initial Data if empty
     // Check Products
-    const prodCheck = await sql`SELECT COUNT(*) FROM products;`;
+    const prodCheck = await pool.query('SELECT COUNT(*) FROM products;');
     if (parseInt(prodCheck.rows[0].count) === 0) {
-      await sql`
+      await pool.query(`
         INSERT INTO products (id, name, price, category, front_image, back_image, description, colors, sizes, stock)
         VALUES (
           'oversized-premium', 
@@ -109,25 +109,25 @@ export async function GET() {
           '["P", "M", "G", "GG"]',
           10
         );
-      `;
+      `);
     }
 
     // Check Services
-    const servCheck = await sql`SELECT COUNT(*) FROM services;`;
+    const servCheck = await pool.query('SELECT COUNT(*) FROM services;');
     if (parseInt(servCheck.rows[0].count) === 0) {
-      await sql`
+      await pool.query(`
         INSERT INTO services (id, title, subtitle, glow, items)
         VALUES 
         ('design', 'DESIGN', 'IDENTIDADE VISUAL & BRANDING', 'neon-purple', '["Desenvolvimento de Logos Premium", "Manuais de Identidade Visual", "Papelaria Corporativa & Flyers", "Mockups Realistas 3D", "Apresentações Comerciais", "Design Editorial & Catálogos"]'),
         ('branding', 'STREETWEAR', 'CONFECCÇÃO DE ROUPAS & DROPS', 'electric-blue', '["Criação de Estampas Exclusivas", "Modelagens Oversized Streetwear", "Fichas Técnicas de Costura", "Direção Criativa de Coleções", "Acompanhamento de Produção", "Tags, Etiquetas & Embalagens"]'),
         ('motion', 'MOTION', 'MOTION GRAPHICS & FLYERS ANIMADOS', 'neon-pink', '["Flyers Animados para Eventos", "Apresentação de Logos em Motion", "Vídeos Promocionais Curtos", "Animações para Redes Sociais", "Stories Dinâmicos e Reels", "Intros e Vinhetas para Vídeos"]');
-      `;
+      `);
     }
 
     // Check About
-    const aboutCheck = await sql`SELECT COUNT(*) FROM about;`;
+    const aboutCheck = await pool.query('SELECT COUNT(*) FROM about;');
     if (parseInt(aboutCheck.rows[0].count) === 0) {
-      await sql`
+      await pool.query(`
         INSERT INTO about (id, story, mission, ceo_name, ceo_age, ceo_loc, ceo_tag, ceo_image, stats)
         VALUES (
           1,
@@ -145,13 +145,13 @@ export async function GET() {
             {"value": "Nacional", "label": "Atendimento Brasil"}
           ]'
         );
-      `;
+      `);
     }
 
     // Check Hero
-    const heroCheck = await sql`SELECT COUNT(*) FROM hero;`;
+    const heroCheck = await pool.query('SELECT COUNT(*) FROM hero;');
     if (parseInt(heroCheck.rows[0].count) === 0) {
-      await sql`
+      await pool.query(`
         INSERT INTO hero (id, tagline, tags, slogan, sub_slogan, bg_image)
         VALUES (
           1,
@@ -161,7 +161,7 @@ export async function GET() {
           'Criamos além dos limites.',
           '/hero_bg_streetwear.jpg'
         );
-      `;
+      `);
     }
 
     return NextResponse.json({ success: true, message: 'Database initialized successfully' });
