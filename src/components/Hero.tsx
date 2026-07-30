@@ -43,13 +43,13 @@ export default function Hero() {
     >
       {/* Background Image with Dark/Neon Overlays */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center opacity-40 scale-105"
+        className="absolute inset-0 z-0 bg-cover bg-center opacity-70 scale-105"
         style={{ backgroundImage: `url(${hero.bgImage})` }}
       />
       
       {/* Gradients */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-t from-black via-transparent to-black" />
-      <div className="absolute inset-0 z-0 bg-gradient-to-r from-black via-black/30 to-black" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/80 via-transparent to-black/80" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
       
       {/* Glow Elements */}
       <div className="absolute top-1/4 left-1/4 w-[30vw] h-[30vw] bg-neon-purple/10 rounded-full blur-[120px] pointer-events-none" />
